@@ -1,28 +1,35 @@
 # Compiler
 CC = gcc
 
-# Compiler flags (add -Wall for warnings)
-CFLAGS = -Wall
+# Compiler flags
+CFLAGS = -Wall -g
 
 # Final program name
 TARGET = main
 
-# Build the program from main.c and lib.c
-$(TARGET): main.o lib.o
-	$(CC) $(CFLAGS) -o $(TARGET) main.o lib.o
+# Object files
+OBJS = main.o lib.o helpers.o
 
-# Compile main.c into main.o
-main.o: main.c lib.h
+# Build final program
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+
+# Compile main.c
+main.o: main.c lib.h helpers.h
 	$(CC) $(CFLAGS) -c main.c
 
-# Compile lib.c into lib.o
-lib.o: lib.c lib.h
+# Compile lib.c
+lib.o: lib.c lib.h helpers.h
 	$(CC) $(CFLAGS) -c lib.c
 
-# Run the program
+# Compile helpers.c
+helpers.o: helpers.c helpers.h lib.h
+	$(CC) $(CFLAGS) -c helpers.c
+
+# Run
 run: $(TARGET)
 	./$(TARGET)
 
-# Clean compiled files
+# Clean
 clean:
 	rm -f *.o $(TARGET)
