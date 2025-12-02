@@ -1,20 +1,34 @@
 #include"helpers.h"
+#include"bit.h"
 
-void swap(CardPtr a, CardPtr b) { 
-    Card temp = *a; 
+void swap(int *a, int *b) { 
+    int temp = *a; 
     *a = *b; 
     *b = temp; 
 }
 
 // SUIT_COUNT * RANK_COUNT for ful deck
-void print_cards(CardPtr cards, int size) {
-    for (int i = 0; i < size; i++) {
-        printf("rank: %d, suit: %c\n", cards[i].rank, cards[i].suit);
+void print_cards(int *hand, int count) {
+    char suit;
+    static char *rank = "??23456789TJQKA?";
+
+    for (int i = 0; i < count; i++, hand++) {
+        int r = (*hand >> 8) & 0xF;
+        if (*hand & CLUB)
+            suit = 'c';
+        else if (*hand & DIAMOND)
+            suit = 'd';
+        else if (*hand & HEART)
+            suit = 'h';
+        else
+            suit = 's';
+
+        printf("suit: %c, rank: %c\n", suit, rank[r]);
     }
 }
 
 // SUIT_COUNT * RANK_COUNT for ful deck
-void shuffle(CardPtr cards, int size) {
+void shuffle(int *cards, int size) {
     // size - 2 because when reaching this index, there will be only one index left, thus nothing random to do
     for (int i = 0; i < size - 2; i++) {
         int j = rand() % (size - i) + i;
@@ -39,7 +53,7 @@ void print_game_state(GameStatePtr game_state, PlayerPtr player) {
         print_cards(game_state->cards, game_state->card_num);
         printf("\n");
     }
-    if (player->hand != NULL) {
+    if (player->hand[0] != 0 && player->hand[1] != 0) {
         printf("Player's hand:\n");
         print_cards(player->hand, 2);
         printf("\n");
@@ -72,8 +86,8 @@ void clean_input(char *input) {
         *p = tolower((unsigned char)*p);
     }
 }
-void draw_community(GameStatePtr game_state, CardPtr deck) {
-    Card *tmp = draw_cards(deck, &game_state->drawn_cards, 1);
+void draw_community(GameStatePtr game_state, int *deck) {
+    int *tmp = draw_cards(deck, &game_state->drawn_cards, 1);
     game_state->cards[game_state->card_num++] = *tmp;
     free(tmp);
 }

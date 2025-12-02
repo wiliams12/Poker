@@ -10,17 +10,10 @@
 
 #define SUIT_COUNT 4
 #define RANK_COUNT 13
-#define PLAYER_COUNT 3
-#define INPUT_SIZE 128
-
-typedef struct {
-    int rank;
-    int suit;
-} Card, *CardPtr;
 
 typedef struct {
     int player_num;
-    CardPtr hand;
+    int hand[2];
     int bet;
     int bank;
     bool folded;
@@ -32,23 +25,26 @@ typedef struct {
     int small_blind_index;
     int big_blind_index;
     int bet;
-    CardPtr cards;
+    int cards[5];
     int card_num;
     // number of cards drawn over more rounds
     int drawn_cards;
     int num_folded;
     int num_all_in;
+    int stage;
+    int to_go;
 } GameState, *GameStatePtr;
 
 typedef enum {
     CHECK, RAISE, CALL, FOLD, ALL_IN, INVALID
 } Action;
 
-void create_deck(CardPtr *deck);
-void game_loop(CardPtr deck);
+void create_deck(int *deck);
+void game_loop(int *deck);
 void init_random();
 Action get_action(char *input, GameStatePtr gamestate);
-Card *draw_cards(Card *deck, int *start, int num);
+int *draw_cards(int *deck, int *start, int num);
+int find_winners(PlayerPtr *players, int num_of_winners, int community_cards[5], int winners[]);
 
 #include"helpers.h"
 #endif
