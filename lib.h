@@ -17,6 +17,7 @@ typedef struct {
     int bet;
     int bank;
     bool folded;
+    bool all_inned;
 } Player, *PlayerPtr;
 
 typedef struct {
@@ -43,8 +44,10 @@ void create_deck(int *deck);
 void game_loop(int *deck);
 void init_random();
 Action get_action(char *input, GameStatePtr gamestate);
-int *draw_cards(int *deck, int *start, int num);
+int *draw_cards(int **deck, int *start, int num);
 int find_winners(PlayerPtr *players, int num_of_winners, int community_cards[5], int winners[]);
+static unsigned find_fast(unsigned u);
+unsigned short eval_7hand(int *hand);
 
 #include"helpers.h"
 #endif

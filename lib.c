@@ -37,19 +37,7 @@ bool perform_action(Action action, PlayerPtr player, GameStatePtr game_state) {
                 int amount = 0;
                 while (true) {
                     amount = get_raise_amount();  
-                    if (game_state->stage == 0) {
-                        if (player->player_num == game_state->small_blind_index) {
-                            // doesn't need to take into account the current bet because it always will be 0
-                            if (amount < game_state->turn + 1) {
-                                continue;
-                            }
-                        } else if (player->player_num == game_state->big_blind_index) {
-                            if (game_state->bet + amount < (game_state->turn + 1) * 2) {
-                                continue;
-                            }
-                        }
-                    }
-                    if (amount <= player->bank) {
+                    if (amount <= player->bank && amount > 0) {
                         break;
                     } 
                 }
@@ -64,14 +52,6 @@ bool perform_action(Action action, PlayerPtr player, GameStatePtr game_state) {
                 game_state->bet += amount;
                 break;
             case CALL:
-                // only big blind, small blind will never be able to call
-                if (game_state->stage == 0) {
-                    if (player->player_num == game_state->big_blind_index) {
-                        if (game_state->bet < (game_state->turn + 1) * 2) {
-                            return false;
-                        }
-                    }
-                }
                 if (game_state->bet < player->bet) {
                     fprintf(stderr, "internal error: incorrect management of legal actions\n");
                     exit(1);
@@ -100,6 +80,7 @@ bool perform_action(Action action, PlayerPtr player, GameStatePtr game_state) {
                     game_state->bet = player->bet;  
                 }
                 game_state->num_all_in++;
+                player->all_inned = true;
                 break;
             default:
                 printf("invalid\n");
@@ -125,6 +106,11 @@ void reward_winner(PlayerPtr *players, int num_of_players, int winner_index) {
 }
 
 void reward_winners(PlayerPtr *players, int num_of_players, int *winners, int count) {
+    printf("==========\nplayers tied\n==========\n");
+    for (int i = 0; i < count; i++) {
+        printf("Player %d\n", (*players)[i].player_num + 1);
+    }
+    printf("rewards split\n\n");
     int pot_size = 0;
 
     for (int i = 0; i < num_of_players; i++) {
@@ -138,6 +124,60 @@ void reward_winners(PlayerPtr *players, int num_of_players, int *winners, int co
     for (int i = 0; i < count; i++) {
         (*players)[winners[i]].bank += share;
     }
+}
+
+bool is_over(PlayerPtr *players, int num_of_players) {
+    int found = 0;
+    for (int i = 0; i < num_of_players; i++) {
+         if ((*players)[i].bank == 0) {
+            found++;
+         }
+    }
+    return (found == num_of_players - 1);
+}
+
+int not_folded(Player *players, int num_of_players) {
+    for (int i = 0; i < num_of_players; i++) {
+        if (!players[i].folded) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void blind_bets(PlayerPtr *players, GameStatePtr game_state) {
+    int sb_amount = game_state->turn + 1;
+    int bb_amount = 2 * (game_state->turn + 1);
+    
+    // --- 1. SMALL BLIND LOGIC ---
+    int *sb_bank = &(*players)[game_state->small_blind_index].bank;
+    if (sb_amount <= *sb_bank) {
+        (*players)[game_state->small_blind_index].bet = sb_amount;
+        *sb_bank -= sb_amount;
+    } else {
+        (*players)[game_state->small_blind_index].bet = *sb_bank;
+        *sb_bank = 0;
+        (*players)[game_state->small_blind_index].all_inned = true;
+        game_state->num_all_in++;
+    }
+
+    // --- 2. BIG BLIND LOGIC ---
+    int *bb_bank = &(*players)[game_state->big_blind_index].bank;
+    
+    if (bb_amount <= *bb_bank) {
+        // BB has enough chips to cover the full blind
+        (*players)[game_state->big_blind_index].bet = bb_amount;
+        *bb_bank -= bb_amount;
+    } else {
+        // BB is short-stacked and goes All-In
+        (*players)[game_state->big_blind_index].bet = *bb_bank;
+        *bb_bank = 0;
+        (*players)[game_state->big_blind_index].all_inned = true;
+        game_state->num_all_in++;
+    }
+
+    game_state->bet = (*players)[game_state->big_blind_index].bet;
+    game_state->to_go = game_state->big_blind_index + 1; // UTG is next to act
 }
 
 
@@ -162,42 +202,84 @@ void game_loop(int *deck) {
     game_state.stage = 0;
     game_state.to_go = game_state.small_blind_index;
 
-    bool running = true;
-
-    while (running) {
+    while (!is_over(&players, num_of_players)) {
 
         bool betting_round = true;
+        int winner_by_folds = -1;
 
-        for (int round = 0; round < 5; round++) {
+        blind_bets(&players, &game_state);
+
+        for (int round = 0; round < 4; round++) {
             betting_round = true;
             int aggressor = 0;
+
+            switch (game_state.stage) {
+                case 0:
+                    for (int player = 0; player < num_of_players; player++) {
+                        int *tmp = draw_cards(&deck, &game_state.drawn_cards, 2);
+                        players[player].hand[0] = tmp[0];
+                        players[player].hand[1] = tmp[1];
+                        free(tmp);
+                    }
+                    break;
+
+                case 1: {
+                    for (int i = 0; i < 3; i++) {
+                        draw_community(&game_state, &deck);
+                    }
+                    break;
+                }
+
+                case 2: {
+                    draw_community(&game_state, &deck);
+                    break;
+                }
+
+                case 3: {
+                    draw_community(&game_state, &deck);
+                    break;
+                }
+                
+                case 4:
+                    break;
+
+                default:
+                    fprintf(stderr, "invalid stage reached\n");
+                    break;
+            }
+
             while (betting_round) {
                 for (int player = game_state.to_go; player < num_of_players + game_state.to_go; player++) {
-                    if (players[player % num_of_players].folded) {
-                        continue;
-                    }
-                    if (game_state.num_folded + game_state.num_all_in == num_of_players) {
-                        betting_round = false;
-                        continue;
-                    }
-                    print_game_state(&game_state, &players[player % num_of_players]);
                     if (game_state.num_folded == num_of_players - 1) {
-                        reward_winner(&players, num_of_players, player % num_of_players);
+                        betting_round = false;
                         round = 5;
+                        winner_by_folds = not_folded(players, num_of_players);
+                        break;
+                    }
+
+                    if (game_state.num_folded + game_state.num_all_in == num_of_players) {
                         betting_round = false;
                         break;
                     }
+                    if (players[player % num_of_players].bank == 0) {
+                        // Even though we skip them, we must check if the betting circle is closed!
+                        if ((player + 1) % num_of_players == aggressor && game_state.bet == players[(player + 1) % num_of_players].bet) {
+                            betting_round = false;
+                            game_state.to_go = player + 1;
+                            break;
+                        }
+                        continue; 
+                    }
+
+                    if (players[player % num_of_players].folded) {
+                        continue;
+                    }
+                    print_game_state(&game_state, &players[player % num_of_players]);
+
                     char input[INPUT_SIZE];
                     while (true) {
                         get_input(input);
                         Action action = get_action(input, &game_state);
-                        if (game_state.stage == 0) {
-                            if ((player % num_of_players == game_state.small_blind_index ||
-                                player % num_of_players == game_state.big_blind_index) && action == CHECK) {
-                                    printf("invalid move\n");
-                                    continue;
-                                }
-                        }
                         if (action == INVALID) {
                             printf("invalid input\n");
                             continue;
@@ -220,54 +302,34 @@ void game_loop(int *deck) {
                     }
                 }
             }
-            switch (game_state.stage) {
-                case 0:
-                    for (int player = 0; player < num_of_players; player++) {
-                        int *tmp = draw_cards(deck, &game_state.drawn_cards, 2);
-                        players[player].hand[0] = tmp[0];
-                        players[player].hand[1] = tmp[1];
-                        free(tmp);
-                    }
-                    break;
-
-                case 1: {
-                    for (int i = 0; i < 3; i++) {
-                        draw_community(&game_state, deck);
-                    }
-                    break;
-                }
-
-                case 2: {
-                    draw_community(&game_state, deck);
-                    break;
-                }
-
-                case 3: {
-                    draw_community(&game_state, deck);
-                    break;
-                }
-                
-                case 4:
-                    break;
-
-                default:
-                    fprintf(stderr, "invalid stage reached\n");
-                    break;
-            }
-
 
             game_state.stage++;
         }
 
         int winners[PLAYER_COUNT];
 
-        int winner_count = find_winners(&players, num_of_players, game_state.cards, winners);
-
-        if (winner_count == 1) {
-            reward_winner(&players, num_of_players, winners[0]);
+        if (winner_by_folds != -1) {
+            reward_winner(&players, num_of_players, winner_by_folds);
         } else {
-            reward_winners(&players, num_of_players, winners, winner_count);
+            printf("%d\n", game_state.cards[0]);
+            printf("%d\n", game_state.cards[1]);
+            printf("%d\n", game_state.cards[2]);
+            printf("%d\n", game_state.cards[3]);
+            printf("%d\n", game_state.cards[4]);
+
+            printf("%d\n", players[0].hand[0]);
+            printf("%d\n", players[0].hand[1]);
+
+            printf("hej\n");
+            int winner_count = find_winners(&players, num_of_players, game_state.cards, winners);
+            printf("hoj\n");
+            if (winner_count == 1) {
+                reward_winner(&players, num_of_players, winners[0]);
+            } else {
+                reward_winners(&players, num_of_players, winners, winner_count);
+            }
         }
+
 
 
         printf("round ended\n");
@@ -285,13 +347,14 @@ void game_loop(int *deck) {
 
         for (int player = 0; player < num_of_players; player++) {
             players[player].folded = false;
+            players[player].all_inned = false;
             players[player].bet = 0;
         }
     }
 }
 
 // ! the result needs to be freed
-int *draw_cards(int *deck, int *start, int num) {
+int *draw_cards(int **deck, int *start, int num) {
     int *drawn = malloc(sizeof(int) * num);
     if (!drawn) {
         fprintf(stderr, "UNable to allocate memory\n");
@@ -299,11 +362,16 @@ int *draw_cards(int *deck, int *start, int num) {
     }
 
     for (int i = 0; i < num; i++) {
-        drawn[i] = deck[*start + i];
+        drawn[i] = (*deck)[*start + i];
     }
 
 
     *start += num;
+
+    /*if (*start == SUIT_COUNT * RANK_COUNT) {
+        *start = 0;
+        shuffle(*deck, SUIT_COUNT * RANK_COUNT);
+    }*/
 
     return drawn;
 }
@@ -327,26 +395,117 @@ Action get_action(char *input, GameStatePtr gamestate) {
     }
 }
 
+static unsigned short eval_5cards(int c1, int c2, int c3, int c4, int c5) {
+    int q = (c1 | c2 | c3 | c4 | c5) >> 16;
+    short s;
+
+    // This checks for Flushes and Straight Flushes.
+    if (c1 & c2 & c3 & c4 & c5 & 0xf000)
+        return flushes[q];
+
+    // This checks for Straights and High Card hands.
+    if ((s = unique5[q]))
+        return s;
+
+    // This performs a perfect-hash lookup for remaining hands.
+    q = (c1 & 0xff) * (c2 & 0xff) * (c3 & 0xff) * (c4 & 0xff) * (c5 & 0xff);
+    unsigned short res = hash_values[find_fast(q)];
+    return res;
+}
+
+unsigned short eval_5hand(int *hand) {
+    int c1 = *hand++;
+    int c2 = *hand++;
+    int c3 = *hand++;
+    int c4 = *hand++;
+    int c5 = *hand;
+
+    return eval_5cards(c1, c2, c3, c4, c5);
+}
+
+unsigned short eval_7hand(int *hand) {
+    int subhand[5];
+    unsigned short best = 9999;
+
+    for (int i = 0; i < 21; i++)
+    {
+        for (int j = 0; j < 5; j++)
+            subhand[j] = hand[ perm7[i][j] ];
+        unsigned short q = eval_5hand(subhand);
+        if (q < best)
+            best = q;
+    }
+    return best;
+}
+
+int hand_rank(unsigned short val) {
+    if (val > 6185) {
+        return HIGH_CARD;        // 1277 high card
+    }
+    if (val > 3325) {
+        return ONE_PAIR;         // 2860 one pair
+    }
+    if (val > 2467) {
+        return TWO_PAIR;         //  858 two pair
+    }
+    if (val > 1609) {
+        return THREE_OF_A_KIND;  //  858 three-kind
+    }
+    if (val > 1599) {
+        return STRAIGHT;         //   10 straights
+    }
+    if (val > 322) {
+        return FLUSH;            // 1277 flushes
+    }
+    if (val > 166) {
+        return FULL_HOUSE;       //  156 full house
+    }
+    if (val > 10) {
+        return FOUR_OF_A_KIND;   //  156 four-kind
+    }
+    if (val > 1) {
+        return STRAIGHT_FLUSH;                   //   9 straight-flushes
+    }
+    return ROYAL_FLUSH; // royal flush
+}
+
+static unsigned find_fast(unsigned u) {
+    unsigned a, b, r;
+
+    u += 0xe91aaa35;
+    u ^= u >> 16;
+    u += u << 8;
+    u ^= u >> 4;
+    b  = (u >> 8) & 0x1ff;
+    a  = (u + (u << 2)) >> 19;
+    r  = a ^ hash_adjust[b];
+    return r;
+}
+
+
 int score_player(PlayerPtr player, int *community_cards) {
-    return 0;
-    // TODO: do eval
+    int hand[7] = {
+        player->hand[0], player->hand[1], 
+        community_cards[0], community_cards[1], 
+        community_cards[2], community_cards[3], 
+        community_cards[4]
+    };
+    return eval_7hand(hand);
 }
 
 
 int find_winners(PlayerPtr *players, int num_of_players, int community_cards[5], int winners[]) {
-    int max_score = -1;
+    int max_score = 7463;
     int winner_count = 0;
 
-    printf("in scoring\n");
     for (int i = 0; i < num_of_players; i++) {
         if ((*players)[i].folded) {
             continue;
         }
-        int eval = score_player(players[i], community_cards);  
-        printf("Player: %d    Evaluation: %d\n", i + 1, eval);
-
+        int eval = score_player(&(*players)[i], community_cards);  
+        printf("Player: %d    %s    Evaluation: %d\n", i + 1, value_str[hand_rank(eval)], eval);
         // If this player has a strictly better score → reset winners list
-        if (eval > max_score) {
+        if (eval < max_score) {
             max_score = eval;
             winner_count = 1;
             winners[0] = i;

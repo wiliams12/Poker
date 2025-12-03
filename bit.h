@@ -1,6 +1,7 @@
 #ifndef BIT_H
 #define BIT_H
 
+#define ROYAL_FLUSH 0
 #define	STRAIGHT_FLUSH  1
 #define	FOUR_OF_A_KIND  2
 #define	FULL_HOUSE      3
@@ -14,7 +15,7 @@
 #define	RANK(x)  ((x >> 8) & 0xF)
 
 static char *value_str[] = {
-    "",
+    "Royal Flush",
     "Straight Flush",
     "Four of a Kind",
     "Full House",
@@ -51,5 +52,10 @@ static char *value_str[] = {
 #define INPUT_SIZE 128
 
 extern int primes[];
+extern unsigned short flushes[];
+extern unsigned short unique5[];
+extern unsigned short hash_adjust[];
+extern unsigned short hash_values[];
+extern int perm7[21][5];
 
 #endif

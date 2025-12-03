@@ -10,6 +10,8 @@
 
 <img src="readme_imgs/bit_card.png" height=150>
 
+- I have used his look up table and some of his logic
+
 
 # Basic poker rules
 
@@ -19,5 +21,6 @@
 - doesn't implement a side pot for simplicity (players play for all the money, no sub plotting)
 - note that my rules may be flawed, I am not a Poker expert
 - blinds are increased with every turn to make the game as intense as possible
+- no short blinds
 
 # Hand values
