@@ -86,8 +86,8 @@ void clean_input(char *input) {
         *p = tolower((unsigned char)*p);
     }
 }
-void draw_community(GameStatePtr game_state, int **deck) {
-    int *tmp = draw_cards(&deck, &game_state->drawn_cards, 1);
+void draw_community(GameStatePtr game_state, int *deck) {
+    int *tmp = draw_cards(deck, &game_state->drawn_cards, 1);
     game_state->cards[game_state->card_num++] = *tmp;
     free(tmp);
 }

@@ -3,9 +3,11 @@
 
 void create_deck(int *deck) {
     int n = 0, suit = CLUB;
-    for (int i = 0; i < 4; i++, suit >>= 1)
-        for (int j = 0; j < 13; j++, n++)
+    for (int i = 0; i < 4; i++, suit >>= 1) {
+        for (int j = 0; j < 13; j++, n++) {
             deck[n] = primes[j] | ((2+j) << 8) | suit | (1 << (16+j));
+        }
+    }
 }
 
 void init_random() {
@@ -216,7 +218,7 @@ void game_loop(int *deck) {
             switch (game_state.stage) {
                 case 0:
                     for (int player = 0; player < num_of_players; player++) {
-                        int *tmp = draw_cards(&deck, &game_state.drawn_cards, 2);
+                        int *tmp = draw_cards(deck, &game_state.drawn_cards, 2);
                         players[player].hand[0] = tmp[0];
                         players[player].hand[1] = tmp[1];
                         free(tmp);
@@ -225,24 +227,21 @@ void game_loop(int *deck) {
 
                 case 1: {
                     for (int i = 0; i < 3; i++) {
-                        draw_community(&game_state, &deck);
+                        draw_community(&game_state, deck);
                     }
                     break;
                 }
 
                 case 2: {
-                    draw_community(&game_state, &deck);
+                    draw_community(&game_state, deck);
                     break;
                 }
 
                 case 3: {
-                    draw_community(&game_state, &deck);
+                    draw_community(&game_state, deck);
                     break;
                 }
                 
-                case 4:
-                    break;
-
                 default:
                     fprintf(stderr, "invalid stage reached\n");
                     break;
@@ -262,7 +261,6 @@ void game_loop(int *deck) {
                         break;
                     }
                     if (players[player % num_of_players].bank == 0) {
-                        // Even though we skip them, we must check if the betting circle is closed!
                         if ((player + 1) % num_of_players == aggressor && game_state.bet == players[(player + 1) % num_of_players].bet) {
                             betting_round = false;
                             game_state.to_go = player + 1;
@@ -320,9 +318,8 @@ void game_loop(int *deck) {
             printf("%d\n", players[0].hand[0]);
             printf("%d\n", players[0].hand[1]);
 
-            printf("hej\n");
             int winner_count = find_winners(&players, num_of_players, game_state.cards, winners);
-            printf("hoj\n");
+
             if (winner_count == 1) {
                 reward_winner(&players, num_of_players, winners[0]);
             } else {
@@ -354,7 +351,7 @@ void game_loop(int *deck) {
 }
 
 // ! the result needs to be freed
-int *draw_cards(int **deck, int *start, int num) {
+int *draw_cards(int *deck, int *start, int num) {
     int *drawn = malloc(sizeof(int) * num);
     if (!drawn) {
         fprintf(stderr, "UNable to allocate memory\n");
@@ -362,16 +359,11 @@ int *draw_cards(int **deck, int *start, int num) {
     }
 
     for (int i = 0; i < num; i++) {
-        drawn[i] = (*deck)[*start + i];
+        drawn[i] = deck[*start + i];
     }
 
 
     *start += num;
-
-    /*if (*start == SUIT_COUNT * RANK_COUNT) {
-        *start = 0;
-        shuffle(*deck, SUIT_COUNT * RANK_COUNT);
-    }*/
 
     return drawn;
 }
