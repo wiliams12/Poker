@@ -61,8 +61,17 @@ bool handle_requests(const char *request, PlayerPtr player, GameStatePtr game_st
                 for (int i = 0; i < game_state->card_num; i++) {
                     array[i+2] = game_state->cards[i];
                 }
+                if (len == 5) {
+                    printf("%d\n", eval_5hand(array));
+                }
+                else if (len == 7) {
+                    printf("%d\n", eval_7hand(array));
+                }
+                else {
+                    printf("-1\n");
+                }
+                // TODO: improve this logic so it handles even incomplete hands
             }   
-            // !!!!! TODO: finsih so this correctly gives back the eval
             break;
         default:
             return false;
@@ -318,8 +327,7 @@ void game_loop(int *deck, int num_of_players) {
                     fprintf(stderr, "invalid stage reached\n");
                     break;
             }
-
-            // ! CHECK rule broken
+            
             while (betting_round && not_ended) {
                 for (int player = game_state.to_go; player < num_of_players + game_state.to_go; player++) {
                     if (players[player % num_of_players].bank == 0) {

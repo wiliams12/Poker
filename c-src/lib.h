@@ -50,6 +50,7 @@ int *draw_cards(int *deck, int *start, int num);
 int find_winners(PlayerPtr *players, int num_of_winners, int community_cards[5], int winners[]);
 static unsigned find_fast(unsigned u);
 unsigned short eval_7hand(int *hand);
+unsigned short eval_5hand(int *hand);
 
 extern FILE *g_json_ipc_stream;
 

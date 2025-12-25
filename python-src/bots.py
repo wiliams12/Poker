@@ -23,17 +23,16 @@ class Bot():
         self.process = process
         self.name = "bot"
 
-    def play(self):
+    # returns an index of a move 0-4
+    def choose_move(self):
         pass
 
-class BobTheRandom(Bot):
-    def __init__(self, process):
-        super().__init__(process)
-        self.name = "Bob the Random"
+    # returns a valid amount to be raised
+    def raise_amount(self, budget):
+        pass
 
-    # ! Some issue at the end probably, happens after a fold or all in
     def play(self):
-        move = moves[random.randint(0,4)]
+        move = moves[self.choose_move()]
         budget = 0
         if move == "raise\n":
             budget = lib.get_bank(self.process)
@@ -44,7 +43,7 @@ class BobTheRandom(Bot):
             if response == "successfully played":
                 raise CMDError
             while True:
-                amount = random.randint(0, budget)
+                amount = self.raise_amount(budget)
                 lib.write_to_stdin(self.process, str(amount) + "\n")
                 response = lib.read_from_stdout(self.process)
                 if response == "amount raised":
@@ -55,6 +54,29 @@ class BobTheRandom(Bot):
                         raise CMDError
 
         return response
+
+class BobTheRandom(Bot):
+    def __init__(self, process):
+        super().__init__(process)
+        self.name = "Bob the Random"
+
+    def choose_move(self):
+        return random.randint(0,4)
+
+    def raise_amount(self, budget):
+        return random.randint(1,budget)
+    
+class AlvinTheBold(Bot):
+    def __init__(self, process):
+        super().__init__(process)
+        self.name = "Alvin the Bold"
+    
+    def choose_move(self):
+        return 0
+
+    def raise_amount(self, budget):
+        print("Logic error: Alvin should never be able to play raise!")
+        return budget
 
 class Record():
     def __init__(self, player_num):
@@ -162,7 +184,8 @@ class Game():
         # 2. Setup Plotting Variables
         num_turns = len(self.history)
         turns = np.arange(1, num_turns + 1)
-        player_labels = {i: f'Player {i+1}' for i in range(self.num_of_players)}
+        # Starts counting from 0 by default
+        player_labels = {i: f"Player: {bot.name}" for i, bot in enumerate(self.bots)}
         
         fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10, 8), sharex=True)
         fig.suptitle(title, fontsize=16)

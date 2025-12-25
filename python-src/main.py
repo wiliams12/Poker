@@ -17,9 +17,9 @@ def run_game():
     )
 
     bot1 = bots.BobTheRandom(process)
-    bot2 = bots.BobTheRandom(process)
+    bot2 = bots.AlvinTheBold(process)
     bot3 = bots.BobTheRandom(process)
-    bot4 = bots.BobTheRandom(process)
+    bot4 = bots.AlvinTheBold(process)
 
     bot_list = [bot1, bot2, bot3, bot4]
 
