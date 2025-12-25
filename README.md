@@ -18,6 +18,8 @@
 
 # Basic poker rules
 
+# Standart 52-card deck
+
 # Notes on poker rules
 - follows the [Texas hold 'em](https://en.wikipedia.org/wiki/Texas_hold_%27em)
 - doesn't burn cards (it is unnecessary in digital poker)
@@ -46,3 +48,8 @@
 
 3. round ended proceeds with this msg:
 - [list of winners] ~ [chips in banks]
+
+# Optimal strategy 
+
+## This is the way a turn might look in a graph (those are all random-playing bots)
+![alt text](readme_imgs/graph_example_random.png)

@@ -1,38 +1,29 @@
-# Compiler
+# Compiler and Flags
 CC = gcc
-
-# Compiler flags
 CFLAGS = -Wall -g
-
-# Final program name
+SRC_DIR = c-src
 TARGET = main
 
 # Object files
 OBJS = main.o lib.o helpers.o bit.o
 
-# Build final program
+# 1. Link the final executable
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
 
-# Compile main.c
-main.o: main.c lib.h helpers.h bit.h
-	$(CC) $(CFLAGS) -c main.c
+# 2. Compile objects from the c-src directory
+# The syntax '%.o: $(SRC_DIR)/%.c' handles all files automatically
+%.o: $(SRC_DIR)/%.c $(SRC_DIR)/lib.h $(SRC_DIR)/helpers.h $(SRC_DIR)/bit.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Compile lib.c
-lib.o: lib.c lib.h helpers.h bit.h
-	$(CC) $(CFLAGS) -c lib.c
+# Special case for bit.o if it has fewer dependencies
+bit.o: $(SRC_DIR)/bit.c $(SRC_DIR)/bit.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Compile helpers.c
-helpers.o: helpers.c helpers.h lib.h bit.h
-	$(CC) $(CFLAGS) -c helpers.c
+.PHONY: run clean
 
-bit.o: bit.c bit.h
-	$(CC) $(CFLAGS) -c bit.c
-
-# Run
 run: $(TARGET)
 	./$(TARGET)
 
-# Clean
 clean:
 	rm -f *.o $(TARGET)

@@ -16,7 +16,6 @@ def read_from_stdout(process):
 # ! ValueError if mismatch in communication (due to mapping to int)
 def get_bank(process):
     write_to_stdin(process, "2\n")
-    _ = response = read_from_stdout(process)
     response = read_from_stdout(process)
     if response == "" or response == "invalid":
         return 0
@@ -24,7 +23,6 @@ def get_bank(process):
 
 def get_bet(process):
     write_to_stdin(process, "3\n")
-    _ = response = read_from_stdout(process)
     response = read_from_stdout(process)
     if response == "" or response == "invalid":
         return 0
@@ -32,7 +30,6 @@ def get_bet(process):
 
 def get_cards(process):
     write_to_stdin(process, "1\n")
-    _ = response = read_from_stdout(process)
     hand = []
     response = None
     while True:

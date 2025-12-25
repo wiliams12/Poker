@@ -351,9 +351,6 @@ void game_loop(int *deck, int num_of_players) {
                     char input[INPUT_SIZE];
                     while (true) {
                         get_input(input);
-                        printf("%s", input);
-                        fflush(stdout);
-                        // ? somewhere in here it get's stuck and doesn't send anything out
                         if (handle_requests(input, &players[player % num_of_players], &game_state)) {
                             continue;
                         }
@@ -434,7 +431,7 @@ void game_loop(int *deck, int num_of_players) {
             players[player].bet = 0;
         }
     }
-    printf("Program ended motherfucker\n");
+    printf("Program ended\n");
     fflush(stdout);
 }
 
@@ -442,7 +439,7 @@ void game_loop(int *deck, int num_of_players) {
 int *draw_cards(int *deck, int *start, int num) {
     int *drawn = malloc(sizeof(int) * num);
     if (!drawn) {
-        fprintf(stderr, "UNable to allocate memory\n");
+        fprintf(stderr, "Unable to allocate memory\n");
         return 0;
     }
 

@@ -38,7 +38,6 @@ class BobTheRandom(Bot):
         if move == "raise\n":
             budget = lib.get_bank(self.process)
         lib.write_to_stdin(self.process, move)
-        _ = lib.read_from_stdout(self.process) # needs to be here so it doesn't read the echo of the move
         response = lib.read_from_stdout(self.process)
         if move == "raise\n" and response != "invalid":
             #response != "invalid":
