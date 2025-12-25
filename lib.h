@@ -10,6 +10,8 @@
 
 #define SUIT_COUNT 4
 #define RANK_COUNT 13
+#define PLAYER_COUNT 4
+#define INPUT_SIZE 128
 
 typedef struct {
     int player_num;
@@ -41,13 +43,15 @@ typedef enum {
 } Action;
 
 void create_deck(int *deck);
-void game_loop(int *deck);
+void game_loop(int *deck, int num_of_players);
 void init_random();
 Action get_action(char *input, GameStatePtr gamestate);
 int *draw_cards(int *deck, int *start, int num);
 int find_winners(PlayerPtr *players, int num_of_winners, int community_cards[5], int winners[]);
 static unsigned find_fast(unsigned u);
 unsigned short eval_7hand(int *hand);
+
+extern FILE *g_json_ipc_stream;
 
 #include"helpers.h"
 #endif

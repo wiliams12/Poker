@@ -7,4 +7,5 @@ void print_cards(int *cards, int size);
 void shuffle(int *cards, int size);
 void draw_community(GameStatePtr game_state, int *deck);
 void print_game_state(GameStatePtr game_state, PlayerPtr player);
+int handle_arguments(int argc, char *argv[]);
 #endif

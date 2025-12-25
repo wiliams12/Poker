@@ -1,3 +1,7 @@
+/*
+Cactus Kev's code
+*/
+
 #ifndef BIT_H
 #define BIT_H
 
@@ -46,11 +50,6 @@ static char *value_str[] = {
 #define King    13
 #define Ace     14
 
-#define SUIT_COUNT 4
-#define RANK_COUNT 13
-#define PLAYER_COUNT 3
-#define INPUT_SIZE 128
-
 extern int primes[];
 extern unsigned short flushes[];
 extern unsigned short unique5[];
@@ -59,3 +58,6 @@ extern unsigned short hash_values[];
 extern int perm7[21][5];
 
 #endif
+
+/*
+*/

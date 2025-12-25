@@ -23,9 +23,11 @@ void print_cards(int *hand, int count) {
         else
             suit = 's';
 
-        printf("suit: %c, rank: %c\n", suit, rank[r]);
+        // ? printf("suit: %c, rank: %c\n", suit, rank[r]);
+        printf("%c%c\n", suit, rank[r]);
     }
 }
+
 
 // SUIT_COUNT * RANK_COUNT for ful deck
 void shuffle(int *cards, int size) {
@@ -90,4 +92,18 @@ void draw_community(GameStatePtr game_state, int *deck) {
     int *tmp = draw_cards(deck, &game_state->drawn_cards, 1);
     game_state->cards[game_state->card_num++] = *tmp;
     free(tmp);
+}
+
+int handle_arguments(int argc, char *argv[]) {
+    int num_of_players;
+    if (argc == 2) {
+        num_of_players = atoi(argv[1]);
+        if (num_of_players < 2) {
+            fprintf(stderr, "invalid amount of players, setting it to default\n");
+            num_of_players = PLAYER_COUNT;
+        }
+    } else {
+        num_of_players = PLAYER_COUNT;
+    }
+    return num_of_players;
 }

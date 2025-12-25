@@ -1,6 +1,10 @@
 #include"lib.h"
 #include"bit.h"
 
+/*
+Cactus Kev's code
+*/
+
 void create_deck(int *deck) {
     int n = 0, suit = CLUB;
     for (int i = 0; i < 4; i++, suit >>= 1) {
@@ -10,12 +14,70 @@ void create_deck(int *deck) {
     }
 }
 
+/*
+*/
+
 void init_random() {
     srand(time(NULL));
 }
 
+/*
+1 - get cards
+2 - get bank
+3 - get bet
+4 - get eval
+*/
+
+bool handle_requests(const char *request, PlayerPtr player, GameStatePtr game_state) {
+    int converted = atoi(request);
+    switch(converted) {
+        case 1:
+            if (game_state->stage != 0) {
+                int len = game_state->card_num+2;
+                int array[len];
+                array[0] = player->hand[0];
+                array[1] = player->hand[1];
+                for (int i = 0; i < game_state->card_num; i++) {
+                    array[i+2] = game_state->cards[i];
+                }
+                print_cards(array, len);
+            }
+            printf("end\n");
+            break;
+            
+        case 2:
+            printf("%d\n", player->bank);
+            break;
+            
+        case 3:
+            printf("%d\n", game_state->bet);
+            break;
+        case 4:
+            {
+                int len = game_state->card_num+2;
+                int array[len];
+                array[0] = player->hand[0];
+                array[1] = player->hand[1];
+                for (int i = 0; i < game_state->card_num; i++) {
+                    array[i+2] = game_state->cards[i];
+                }
+            }   
+            // !!!!! TODO: finsih so this correctly gives back the eval
+            break;
+        default:
+            return false;
+            break;
+    }
+    
+    // Critical step for IPC: ensure output buffer is sent
+    fflush(stdout); 
+    fflush(stderr); 
+    return true;
+}
+
 int get_raise_amount(void) {
     printf("Raise amount: \n");
+    fflush(stdout);
     int amount;
     scanf("%d", &amount);
 
@@ -36,6 +98,9 @@ bool perform_action(Action action, PlayerPtr player, GameStatePtr game_state) {
                 }
                 break;
             case RAISE:
+                if (player->bank < game_state->bet - player->bet + 1) {
+                    return false;
+                }  
                 int amount = 0;
                 while (true) {
                     amount = get_raise_amount();  
@@ -43,6 +108,8 @@ bool perform_action(Action action, PlayerPtr player, GameStatePtr game_state) {
                         break;
                     } 
                 }
+                printf("amount raised\n");
+                fflush(stdout);
                 if (player->bet < game_state->bet) {
                     int diff = game_state->bet + amount - player->bet;
                     player->bet += diff;
@@ -94,12 +161,13 @@ bool perform_action(Action action, PlayerPtr player, GameStatePtr game_state) {
 
 void get_input(char *input) {
     // TODO: handle input (text base, later make a UI based variation)
+    // ! If the input is larger, the program crashes
     input = fgets(input, sizeof(char) * INPUT_SIZE, stdin);
 }
 
 void reward_winner(PlayerPtr *players, int num_of_players, int winner_index) {
-    printf("==========\nwinner\n==========\n");
-    printf("Player: %d\n\n", winner_index + 1);
+    // ? printf("==========\nwinner\n==========\n");
+    // ? printf("Player: %d\n\n", winner_index + 1);
     int pot_size = 0;
     for (int player = 0; player < num_of_players; player++) {
         pot_size += (*players)[player].bet;
@@ -108,11 +176,11 @@ void reward_winner(PlayerPtr *players, int num_of_players, int winner_index) {
 }
 
 void reward_winners(PlayerPtr *players, int num_of_players, int *winners, int count) {
-    printf("==========\nplayers tied\n==========\n");
+    // ? printf("==========\nplayers tied\n==========\n");
     for (int i = 0; i < count; i++) {
-        printf("Player %d\n", (*players)[i].player_num + 1);
+        // ? printf("Player %d\n", (*players)[i].player_num + 1);
     }
-    printf("rewards split\n\n");
+    // ? printf("rewards split\n\n");
     int pot_size = 0;
 
     for (int i = 0; i < num_of_players; i++) {
@@ -183,9 +251,8 @@ void blind_bets(PlayerPtr *players, GameStatePtr game_state) {
 }
 
 
-void game_loop(int *deck) {
-    Player *players = malloc(sizeof(Player) * PLAYER_COUNT); // TODO make variable based of some settings in game
-    int num_of_players = PLAYER_COUNT;
+void game_loop(int *deck, int num_of_players) {
+    Player *players = malloc(sizeof(Player) * num_of_players);
     for (int i = 0; i < num_of_players; i++) {
         players[i] = (Player){.player_num = i, .bank = 2400, .bet=0, .folded=false, .hand = {0}};
     }
@@ -206,10 +273,15 @@ void game_loop(int *deck) {
 
     while (!is_over(&players, num_of_players)) {
 
+        shuffle(deck, SUIT_COUNT * RANK_COUNT);
+        game_state.drawn_cards = 0;
+
         bool betting_round = true;
         int winner_by_folds = -1;
 
         blind_bets(&players, &game_state);
+
+        bool not_ended = true;
 
         for (int round = 0; round < 4; round++) {
             betting_round = true;
@@ -247,49 +319,62 @@ void game_loop(int *deck) {
                     break;
             }
 
-            while (betting_round) {
+            // ! CHECK rule broken
+            while (betting_round && not_ended) {
                 for (int player = game_state.to_go; player < num_of_players + game_state.to_go; player++) {
+                    if (players[player % num_of_players].bank == 0) {
+                        players[player % num_of_players].folded = true;
+                        game_state.num_folded++;
+                    }
                     if (game_state.num_folded == num_of_players - 1) {
                         betting_round = false;
                         round = 5;
                         winner_by_folds = not_folded(players, num_of_players);
+                        not_ended = false;
                         break;
                     }
 
                     if (game_state.num_folded + game_state.num_all_in == num_of_players) {
                         betting_round = false;
+                        not_ended = false;
                         break;
                     }
-                    if (players[player % num_of_players].bank == 0) {
-                        if ((player + 1) % num_of_players == aggressor && game_state.bet == players[(player + 1) % num_of_players].bet) {
-                            betting_round = false;
-                            game_state.to_go = player + 1;
-                            break;
-                        }
-                        continue; 
-                    }
 
-                    if (players[player % num_of_players].folded) {
+                    if (players[player % num_of_players].folded || players[player % num_of_players].all_inned) {
                         continue;
                     }
-                    print_game_state(&game_state, &players[player % num_of_players]);
+                    //print_game_state(&game_state, &players[player % num_of_players]);
+                    printf("move:\n");
+                    printf("%d\n", player % num_of_players);
+                    fflush(stdout);
 
                     char input[INPUT_SIZE];
                     while (true) {
                         get_input(input);
+                        printf("%s", input);
+                        fflush(stdout);
+                        // ? somewhere in here it get's stuck and doesn't send anything out
+                        if (handle_requests(input, &players[player % num_of_players], &game_state)) {
+                            continue;
+                        }
                         Action action = get_action(input, &game_state);
+                        
                         if (action == INVALID) {
-                            printf("invalid input\n");
+                            printf("invalid\n");
+                            fflush(stdout);
                             continue;
                         } else {
                             bool successful = perform_action(action, &players[player % num_of_players], &game_state);
                             if (!successful) {
-                                printf("invalid move\n");
+                                printf("invalid\n");
+                                fflush(stdout);
                                 continue;
                             }
                             if (action == RAISE) {
                                 aggressor = player % num_of_players;
                             }
+                            printf("successfully played\n");
+                            fflush(stdout);
                             break;
                         }
                     }
@@ -304,21 +389,13 @@ void game_loop(int *deck) {
             game_state.stage++;
         }
 
-        int winners[PLAYER_COUNT];
-
+        int winners[num_of_players];
+        int winner_count = 0;
         if (winner_by_folds != -1) {
             reward_winner(&players, num_of_players, winner_by_folds);
+            winners[winner_count++] = winner_by_folds;
         } else {
-            printf("%d\n", game_state.cards[0]);
-            printf("%d\n", game_state.cards[1]);
-            printf("%d\n", game_state.cards[2]);
-            printf("%d\n", game_state.cards[3]);
-            printf("%d\n", game_state.cards[4]);
-
-            printf("%d\n", players[0].hand[0]);
-            printf("%d\n", players[0].hand[1]);
-
-            int winner_count = find_winners(&players, num_of_players, game_state.cards, winners);
+            winner_count = find_winners(&players, num_of_players, game_state.cards, winners);
 
             if (winner_count == 1) {
                 reward_winner(&players, num_of_players, winners[0]);
@@ -330,6 +407,15 @@ void game_loop(int *deck) {
 
 
         printf("round ended\n");
+        for (int i = 0; i < winner_count; i++) {
+            printf("%d ", winners[i]);
+        }
+        printf("~");
+        for (int i = 0; i < num_of_players; i++) {
+            printf("%d ", players[i].bank);
+        }
+        printf("\n");
+        fflush(stdout);
 
         game_state.turn++;
         game_state.dealer_index = (++game_state.dealer_index) % num_of_players;
@@ -348,6 +434,8 @@ void game_loop(int *deck) {
             players[player].bet = 0;
         }
     }
+    printf("Program ended motherfucker\n");
+    fflush(stdout);
 }
 
 // ! the result needs to be freed
@@ -387,17 +475,24 @@ Action get_action(char *input, GameStatePtr gamestate) {
     }
 }
 
+
+/*
+Cactus Kev's code
+*/
+
 static unsigned short eval_5cards(int c1, int c2, int c3, int c4, int c5) {
     int q = (c1 | c2 | c3 | c4 | c5) >> 16;
     short s;
 
     // This checks for Flushes and Straight Flushes.
-    if (c1 & c2 & c3 & c4 & c5 & 0xf000)
+    if (c1 & c2 & c3 & c4 & c5 & 0xf000) {
         return flushes[q];
-
+    }
+    
     // This checks for Straights and High Card hands.
-    if ((s = unique5[q]))
+    if ((s = unique5[q])) {
         return s;
+    }
 
     // This performs a perfect-hash lookup for remaining hands.
     q = (c1 & 0xff) * (c2 & 0xff) * (c3 & 0xff) * (c4 & 0xff) * (c5 & 0xff);
@@ -419,13 +514,14 @@ unsigned short eval_7hand(int *hand) {
     int subhand[5];
     unsigned short best = 9999;
 
-    for (int i = 0; i < 21; i++)
-    {
-        for (int j = 0; j < 5; j++)
+    for (int i = 0; i < 21; i++) {
+        for (int j = 0; j < 5; j++) {
             subhand[j] = hand[ perm7[i][j] ];
+        }
         unsigned short q = eval_5hand(subhand);
-        if (q < best)
+        if (q < best) {
             best = q;
+        }
     }
     return best;
 }
@@ -456,7 +552,7 @@ int hand_rank(unsigned short val) {
         return FOUR_OF_A_KIND;   //  156 four-kind
     }
     if (val > 1) {
-        return STRAIGHT_FLUSH;                   //   9 straight-flushes
+        return STRAIGHT_FLUSH;  //   9 straight-flushes
     }
     return ROYAL_FLUSH; // royal flush
 }
@@ -473,6 +569,9 @@ static unsigned find_fast(unsigned u) {
     r  = a ^ hash_adjust[b];
     return r;
 }
+
+/*
+*/
 
 
 int score_player(PlayerPtr player, int *community_cards) {
@@ -495,7 +594,7 @@ int find_winners(PlayerPtr *players, int num_of_players, int community_cards[5],
             continue;
         }
         int eval = score_player(&(*players)[i], community_cards);  
-        printf("Player: %d    %s    Evaluation: %d\n", i + 1, value_str[hand_rank(eval)], eval);
+        // ? printf("Player: %d    %s    Evaluation: %d\n", i + 1, value_str[hand_rank(eval)], eval);
         // If this player has a strictly better score → reset winners list
         if (eval < max_score) {
             max_score = eval;
